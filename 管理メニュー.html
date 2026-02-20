@@ -62,6 +62,7 @@
     .btn-input { background-color: #00796b; } /* 緑 */
     .btn-report { background-color: #d32f2f; } /* 赤 */
     .btn-back { background-color: #757575; margin-top: 30px; } /* 灰 */
+    .btn-close { background-color: #212121; margin-top: 10px; } /* 黒（終了用） */
 
     /* プロファイル選択ボタン色 */
     .btn-profile {
@@ -143,6 +144,12 @@
         <span class="material-icons icon">arrow_back</span>
         システム選択に戻る
       </button>
+
+      <!-- 追加: 終了ボタン -->
+      <button class="btn btn-close" onclick="closeMenu()">
+        <span class="material-icons icon">close</span>
+        管理メニューを終了する
+      </button>
       
       <div style="text-align:right; margin-top:15px;">
         <button class="file-btn" style="color:#666;" onclick="editCurrentProfile()">⚙️ この設定を編集/削除</button>
@@ -222,6 +229,22 @@
       currentProfileId = null;
       renderProfileList();
       showScreen('selectArea');
+    }
+
+    // --- メニュー終了処理 ---
+    function closeMenu() {
+      // ウィンドウを閉じる試み（ユーザーが直接開いたタブ等では効かない場合があります）
+      window.close();
+      
+      // 閉じられなかった場合は、終了メッセージの画面に書き換える
+      setTimeout(() => {
+        document.body.innerHTML = `
+          <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; background-color: #f0f2f5; color: #333; font-family: sans-serif;">
+            <h2 style="color: #1565c0; margin-bottom: 10px;">終了しました</h2>
+            <p style="color: #666; font-size: 14px;">このタブ（ウィンドウ）を閉じてください。</p>
+          </div>
+        `;
+      }, 200);
     }
 
     // --- プロファイル選択リストの描画 ---
