@@ -1,0 +1,460 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>自販機システム 総合管理メニュー</title>
+  <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+  <!-- QRコードリーダー用ライブラリ -->
+  <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
+  <style>
+    body {
+      font-family: "Helvetica Neue", Arial, sans-serif;
+      background-color: #f0f2f5;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      margin: 0;
+      color: #333;
+    }
+    .container {
+      background: white;
+      padding: 30px;
+      border-radius: 12px;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+      width: 100%;
+      max-width: 450px;
+      box-sizing: border-box;
+      max-height: 95vh;
+      overflow-y: auto;
+    }
+    h2 {
+      margin-top: 0;
+      margin-bottom: 20px;
+      color: #1565c0;
+      font-size: 1.4rem;
+      text-align: center;
+      border-bottom: 2px solid #e3f2fd;
+      padding-bottom: 10px;
+    }
+    
+    /* 共通ボタン設定 */
+    .btn {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 100%;
+      padding: 12px;
+      margin-bottom: 15px;
+      border: none;
+      border-radius: 6px;
+      font-size: 16px;
+      font-weight: bold;
+      cursor: pointer;
+      text-decoration: none;
+      transition: all 0.2s;
+      box-sizing: border-box;
+      color: white;
+    }
+    .btn:hover { transform: translateY(-1px); box-shadow: 0 4px 8px rgba(0,0,0,0.15); }
+    .btn:active { transform: translateY(0); box-shadow: none; }
+    
+    .icon { margin-right: 8px; font-size: 20px; }
+
+    /* メニューボタン色 */
+    .btn-input { background-color: #00796b; } 
+    .btn-report { background-color: #d32f2f; } 
+    .btn-back { background-color: #757575; margin-top: 20px; } 
+    .btn-close { background-color: #212121; margin-top: 10px; } 
+
+    /* プロファイル選択ボタン色 */
+    .btn-profile {
+      background-color: #fff;
+      color: #333;
+      border: 2px solid #1565c0;
+      justify-content: space-between;
+      padding: 15px;
+    }
+    .btn-profile:hover { background-color: #e3f2fd; }
+    .btn-profile .profile-name { flex-grow: 1; text-align: left; margin-left: 10px; }
+    
+    .btn-add { background-color: #f5f5f5; color: #555; border: 2px dashed #ccc; box-shadow: none; }
+    .btn-add:hover { background-color: #e0e0e0; border-color: #aaa; box-shadow: none; }
+
+    /* フォーム周り */
+    label { font-size: 12px; color: #666; margin-bottom: 5px; display: block; font-weight: bold; }
+    input[type="text"] {
+      width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; margin-bottom: 15px; font-size: 14px;
+    }
+    .btn-save { background-color: #1565c0; color: white; margin-bottom: 10px; }
+    .btn-qr { background-color: #388e3c; margin-bottom: 15px; font-size: 14px; padding: 10px; }
+    .btn-qr-stop { background-color: #f57c00; margin-bottom: 15px; font-size: 14px; padding: 10px; }
+    .btn-delete { background-color: #fff; color: #d32f2f; border: 1px solid #d32f2f; margin-top: 20px; }
+    .btn-delete:hover { background-color: #ffebee; }
+
+    .hidden { display: none !important; }
+
+    /* QRリーダー領域 */
+    #qr-reader {
+      width: 100%;
+      margin-bottom: 15px;
+      border-radius: 8px;
+      overflow: hidden;
+      border: none !important;
+    }
+
+    /* 設定ファイル入出力エリア */
+    .file-ops {
+      margin-top: 30px; padding-top: 15px; border-top: 1px solid #eee; display: flex; gap: 10px; justify-content: space-between;
+    }
+    .file-btn {
+      background: none; border: none; color: #1976d2; font-size: 11px; cursor: pointer; text-decoration: underline; padding: 0;
+    }
+    .file-btn:hover { color: #0d47a1; }
+    
+    .subtitle { text-align: center; color: #666; font-size: 13px; margin-bottom: 20px; }
+  </style>
+</head>
+<body>
+
+  <div class="container">
+    
+    <!-- 1. システム選択画面 -->
+    <div id="selectArea">
+      <h2>システム選択</h2>
+      <div class="subtitle">操作する自販機システムを選んでください</div>
+      
+      <div id="profileList">
+        <!-- JSでボタンが動的に追加されます -->
+      </div>
+
+      <button class="btn btn-add" onclick="showSetupForm()">
+        <span class="material-icons icon">add_circle_outline</span>
+        新しいシステムを登録する
+      </button>
+
+      <!-- ファイルバックアップ機能 -->
+      <div class="file-ops">
+        <button class="file-btn" onclick="exportConfig()">📥 設定ファイルを出力(保存)</button>
+        <button class="file-btn" onclick="document.getElementById('importFile').click()">📤 設定ファイルを読込</button>
+        <input type="file" id="importFile" style="display:none" accept=".json" onchange="importConfig(event)">
+      </div>
+    </div>
+
+    <!-- 2. 管理メニュー画面 (選択後) -->
+    <div id="menuArea" class="hidden">
+      <h2 id="menuTitle">管理メニュー</h2>
+      
+      <a href="#" id="linkInput" target="_blank" class="btn btn-input">
+        <span class="material-icons icon">edit_note</span>
+        点検入力画面を開く
+      </a>
+      <a href="#" id="linkReport" target="_blank" class="btn btn-report">
+        <span class="material-icons icon">bar_chart</span>
+        月次レポートを出力する
+      </a>
+      
+      <button class="btn btn-back" onclick="backToSelect()">
+        <span class="material-icons icon">arrow_back</span>
+        システム選択に戻る
+      </button>
+
+      <!-- 終了ボタン -->
+      <button class="btn btn-close" onclick="closeMenu()">
+        <span class="material-icons icon">close</span>
+        管理メニューを終了する
+      </button>
+      
+      <div style="text-align:right; margin-top:15px;">
+        <button class="file-btn" style="color:#666;" onclick="editCurrentProfile()">⚙️ この設定を編集/削除</button>
+      </div>
+    </div>
+
+    <!-- 3. 設定登録・編集フォーム -->
+    <div id="setupArea" class="hidden">
+      <h2 id="setupTitle">システムの登録</h2>
+      
+      <input type="hidden" id="editProfileId">
+      
+      <label>システム名（例: アブレイズ版、備中版など）</label>
+      <input type="text" id="inputName" placeholder="表示名を入力" required>
+      
+      <label>GASウェブアプリのURL</label>
+      
+      <!-- QRコード読み取り領域 -->
+      <button class="btn btn-qr" id="btnStartQr" onclick="startQrScanner()" type="button">
+        <span class="material-icons icon">qr_code_scanner</span>
+        QRコードでURLを読み取る
+      </button>
+      
+      <button class="btn btn-qr-stop hidden" id="btnStopQr" onclick="stopQrScanner()" type="button">
+        <span class="material-icons icon">stop_circle</span>
+        カメラを閉じる
+      </button>
+
+      <div id="qr-reader" class="hidden"></div>
+      
+      <input type="text" id="inputUrl" placeholder="https://script.google.com/macros/s/..." required>
+      
+      <button class="btn btn-save" onclick="saveProfile()" style="margin-top: 10px;">
+        <span class="material-icons icon">save</span> 保存する
+      </button>
+      <button class="btn btn-back" style="margin-top:0;" onclick="backToSelect()">
+        キャンセル
+      </button>
+      
+      <button id="btnDelete" class="btn btn-delete hidden" onclick="deleteProfile()">
+        <span class="material-icons icon">delete</span> この設定を削除する
+      </button>
+    </div>
+
+  </div>
+
+  <script>
+    const STORAGE_KEY = 'vending_machine_profiles';
+    let profiles = [];
+    let currentProfileId = null;
+    let html5QrcodeScanner = null; // QRスキャナー用変数
+
+    // --- 初期化処理 ---
+    window.onload = function() {
+      loadProfiles();
+    };
+
+    function loadProfiles() {
+      const savedData = localStorage.getItem(STORAGE_KEY);
+      if (savedData) {
+        try {
+          profiles = JSON.parse(savedData);
+        } catch(e) {
+          profiles = [];
+        }
+      } else {
+        // 旧バージョンからのデータ移行
+        const oldUrl = localStorage.getItem('abraze_webapp_url');
+        if (oldUrl) {
+          profiles.push({ id: Date.now().toString(), name: 'アブレイズ自販機管理', url: oldUrl });
+          saveToStorage();
+          localStorage.removeItem('abraze_webapp_url'); // 旧キーは削除
+        }
+      }
+      renderProfileList();
+      showScreen('selectArea');
+    }
+
+    function saveToStorage() {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(profiles));
+    }
+
+    // --- 画面切り替え ---
+    function showScreen(screenId) {
+      document.getElementById('selectArea').classList.add('hidden');
+      document.getElementById('menuArea').classList.add('hidden');
+      document.getElementById('setupArea').classList.add('hidden');
+      document.getElementById(screenId).classList.remove('hidden');
+    }
+
+    function backToSelect() {
+      currentProfileId = null;
+      stopQrScanner(); // 戻る時にカメラが開いていれば閉じる
+      renderProfileList();
+      showScreen('selectArea');
+    }
+
+    // --- メニュー終了処理 ---
+    function closeMenu() {
+      window.close();
+      setTimeout(() => {
+        document.body.innerHTML = `
+          <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; background-color: #f0f2f5; color: #333; font-family: sans-serif;">
+            <h2 style="color: #1565c0; margin-bottom: 10px;">終了しました</h2>
+            <p style="color: #666; font-size: 14px;">このタブ（ウィンドウ）を閉じてください。</p>
+          </div>
+        `;
+      }, 200);
+    }
+
+    // --- プロファイル選択リストの描画 ---
+    function renderProfileList() {
+      const listDiv = document.getElementById('profileList');
+      listDiv.innerHTML = '';
+      
+      profiles.forEach(prof => {
+        const btn = document.createElement('button');
+        btn.className = 'btn btn-profile';
+        btn.innerHTML = `
+          <span class="material-icons" style="color:#1565c0;">dns</span>
+          <span class="profile-name">${escapeHtml(prof.name)}</span>
+          <span class="material-icons" style="color:#ccc;">chevron_right</span>
+        `;
+        btn.onclick = () => openMenu(prof.id);
+        listDiv.appendChild(btn);
+      });
+    }
+
+    // --- メニュー画面を開く ---
+    function openMenu(id) {
+      const prof = profiles.find(p => p.id === id);
+      if (!prof) return;
+      
+      currentProfileId = id;
+      document.getElementById('menuTitle').textContent = prof.name;
+      
+      const base = prof.url.trim();
+      const separator = base.includes('?') ? '&' : '?';
+      
+      document.getElementById('linkInput').href = base;
+      document.getElementById('linkReport').href = base + separator + 'page=report';
+      
+      showScreen('menuArea');
+    }
+
+    // --- 登録・編集処理 ---
+    function showSetupForm(editId = null) {
+      document.getElementById('editProfileId').value = editId || '';
+      document.getElementById('btnDelete').classList.toggle('hidden', !editId);
+      
+      if (editId) {
+        const prof = profiles.find(p => p.id === editId);
+        document.getElementById('setupTitle').textContent = '設定の編集';
+        document.getElementById('inputName').value = prof.name;
+        document.getElementById('inputUrl').value = prof.url;
+      } else {
+        document.getElementById('setupTitle').textContent = '新しいシステムの登録';
+        document.getElementById('inputName').value = '';
+        document.getElementById('inputUrl').value = '';
+      }
+      showScreen('setupArea');
+    }
+
+    function editCurrentProfile() {
+      showSetupForm(currentProfileId);
+    }
+
+    function saveProfile() {
+      const name = document.getElementById('inputName').value.trim();
+      const url = document.getElementById('inputUrl').value.trim();
+      const id = document.getElementById('editProfileId').value;
+      
+      if (!name || !url) {
+        alert('システム名とURLを入力してください。');
+        return;
+      }
+      if (!url.startsWith('https://script.google.com/')) {
+        alert('正しいGASのURL(https://script.google.com/...)を入力してください。');
+        return;
+      }
+
+      if (id) {
+        const prof = profiles.find(p => p.id === id);
+        if (prof) { prof.name = name; prof.url = url; }
+      } else {
+        profiles.push({ id: Date.now().toString(), name: name, url: url });
+      }
+
+      saveToStorage();
+      backToSelect();
+    }
+
+    function deleteProfile() {
+      const id = document.getElementById('editProfileId').value;
+      if (confirm('この設定を削除してもよろしいですか？')) {
+        profiles = profiles.filter(p => p.id !== id);
+        saveToStorage();
+        backToSelect();
+      }
+    }
+
+    // --- QRコードリーダー機能 ---
+    function startQrScanner() {
+      document.getElementById('btnStartQr').classList.add('hidden');
+      document.getElementById('btnStopQr').classList.remove('hidden');
+      document.getElementById('qr-reader').classList.remove('hidden');
+
+      html5QrcodeScanner = new Html5QrcodeScanner(
+        "qr-reader", 
+        { fps: 10, qrbox: { width: 250, height: 250 } }, 
+        /* verbose= */ false
+      );
+      
+      html5QrcodeScanner.render(onScanSuccess, onScanFailure);
+    }
+
+    function onScanSuccess(decodedText, decodedResult) {
+      document.getElementById('inputUrl').value = decodedText;
+      stopQrScanner();
+      
+      // フィールドが視覚的に更新されたことをアピール
+      const urlInput = document.getElementById('inputUrl');
+      urlInput.style.backgroundColor = '#e8f5e9';
+      setTimeout(() => { urlInput.style.backgroundColor = '#fff'; }, 1000);
+      
+      alert('QRコードを読み取りました。URLが入力されました。');
+    }
+
+    function onScanFailure(error) {
+      // 読み取り失敗は継続的に呼ばれるため、ここでは特にエラーダイアログは出さない
+    }
+
+    function stopQrScanner() {
+      if (html5QrcodeScanner) {
+        html5QrcodeScanner.clear().then(() => {
+          document.getElementById('btnStartQr').classList.remove('hidden');
+          document.getElementById('btnStopQr').classList.add('hidden');
+          document.getElementById('qr-reader').classList.add('hidden');
+          html5QrcodeScanner = null;
+        }).catch(error => {
+          console.error("カメラの停止に失敗しました。", error);
+        });
+      }
+    }
+
+    // --- ファイル エクスポート / インポート機能 ---
+    function exportConfig() {
+      if (profiles.length === 0) {
+        alert('保存する設定がありません。');
+        return;
+      }
+      const dataStr = JSON.stringify(profiles, null, 2);
+      const blob = new Blob([dataStr], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = '自販機システム設定ファイル.json';
+      a.click();
+      URL.revokeObjectURL(url);
+    }
+
+    function importConfig(event) {
+      const file = event.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        try {
+          const imported = JSON.parse(e.target.result);
+          if (Array.isArray(imported)) {
+            profiles = imported;
+            saveToStorage();
+            renderProfileList();
+            alert('設定ファイルを読み込みました。');
+          } else {
+            throw new Error('形式が違います');
+          }
+        } catch(err) {
+          alert('ファイルの読み込みに失敗しました。正しい設定ファイルを選択してください。');
+        }
+        event.target.value = ''; // リセット
+      };
+      reader.readAsText(file);
+    }
+
+    // セキュリティ対策
+    function escapeHtml(str) {
+      return String(str).replace(/[&<>"'`=\/]/g, function (s) {
+        return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;', '/': '&#x2F;', '=': '&#x3D;', '`': '&#x60;' }[s];
+      });
+    }
+  </script>
+</body>
+</html>
